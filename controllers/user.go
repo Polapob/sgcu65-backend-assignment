@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type AddUserInterface struct {
+type AddUserDTO struct {
 	Email     string `json:"email"`
 	Firstname string `json:"firstname"`
 	Surname   string `json:"surname"`
@@ -21,7 +21,7 @@ type AddUserInterface struct {
 }
 
 func (db *DBController) AddUser(c *gin.Context) {
-	var addedUser AddUserInterface
+	var addedUser AddUserDTO
 	if err := c.ShouldBindJSON(&addedUser); err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
 		return

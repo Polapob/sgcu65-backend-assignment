@@ -7,13 +7,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type AddTeamInterface struct {
+type AddTeamDTO struct {
 	Name string
 }
 
 func (db *DBController) AddTeam(c *gin.Context) {
 
-	var addedTeam AddTeamInterface
+	var addedTeam AddTeamDTO
 
 	if err := c.ShouldBindJSON(&addedTeam); err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())

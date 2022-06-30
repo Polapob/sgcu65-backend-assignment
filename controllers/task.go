@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type AddTaskInterface struct {
+type AddTaskDTO struct {
 	Name     string    `json:"name" binding:"required"`
 	Content  string    `json:"content" binding:"required"`
 	Status   bool      `json:"status"`
@@ -16,7 +16,7 @@ type AddTaskInterface struct {
 }
 
 func (db *DBController) AddTask(c *gin.Context) {
-	var taskAdded AddTaskInterface
+	var taskAdded AddTaskDTO
 
 	if err := c.ShouldBindJSON(&taskAdded); err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
