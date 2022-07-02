@@ -3,6 +3,7 @@ package controllers
 import (
 	"net/http"
 	"sgcu65/models"
+	"sgcu65/services"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -15,7 +16,23 @@ type AddTaskDTO struct {
 	Deadline time.Time `json:"deadline" binding:"required"`
 }
 
-func (db *DBController) AddTask(c *gin.Context) {
+type taskController struct {
+	taskService services.TaskService
+}
+
+type TaskController interface {
+	AddTask(c *gin.Context)
+	DeleteTask(c *gin.Context)
+	GetTask(c *gin.Context)
+}
+
+func NewTaskController(s services.TaskService) taskController {
+	return taskController{
+		taskService: s,
+	}
+}
+
+func (u taskController) AddTask(c *gin.Context) {
 	var taskAdded AddTaskDTO
 
 	if err := c.ShouldBindJSON(&taskAdded); err != nil {
@@ -23,32 +40,33 @@ func (db *DBController) AddTask(c *gin.Context) {
 		return
 	}
 
-	var newTask = &models.Task{
+	var newTask = models.Task{
 		Name:     taskAdded.Name,
 		Content:  taskAdded.Content,
 		Status:   taskAdded.Status,
 		Deadline: taskAdded.Deadline,
 	}
 
-	if err := db.database.Create(&newTask).Error; err != nil {
+	task, err := u.taskService.AddTask(newTask)
+
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": taskAdded})
+	c.JSON(http.StatusOK, gin.H{"data": task})
 }
 
-func (db *DBController) DeleteTask(c *gin.Context) {
+func (u taskController) DeleteTask(c *gin.Context) {
 	id := c.Param("id")
 
-	var task models.Task
-
-	if err := db.database.First(&task, "id = ?", id).Error; err != nil {
+	_, err := u.taskService.GetTask(id)
+	if err != nil {
 		c.JSON(http.StatusNotFound, err.Error())
 		return
 	}
 
-	if err := db.database.Delete(&task, id).Error; err != nil {
+	if err := u.taskService.DeleteTask(id); err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -56,12 +74,12 @@ func (db *DBController) DeleteTask(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": "Task successfully remove"})
 }
 
-func (db *DBController) GetTask(c *gin.Context) {
+func (u taskController) GetTask(c *gin.Context) {
 	id := c.Param("id")
 
-	var task models.Task
+	task, err := u.taskService.GetTask(id)
 
-	if err := db.database.First(&task, "id = ?", id).Error; err != nil {
+	if err != nil {
 		c.JSON(http.StatusNotFound, err.Error())
 		return
 	}

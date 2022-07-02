@@ -3,6 +3,7 @@ package controllers
 import (
 	"net/http"
 	"sgcu65/models"
+	"sgcu65/services"
 
 	"github.com/gin-gonic/gin"
 )
@@ -11,7 +12,23 @@ type AddTeamDTO struct {
 	Name string
 }
 
-func (db *DBController) AddTeam(c *gin.Context) {
+type teamController struct {
+	teamService services.TeamService
+}
+
+type TeamController interface {
+	AddTeam(c *gin.Context)
+	DeleteTeam(c *gin.Context)
+	GetTeam(c *gin.Context)
+}
+
+func NewTeamController(s services.TeamService) TeamController {
+	return teamController{
+		teamService: s,
+	}
+}
+
+func (t teamController) AddTeam(c *gin.Context) {
 
 	var addedTeam AddTeamDTO
 
@@ -20,11 +37,13 @@ func (db *DBController) AddTeam(c *gin.Context) {
 		return
 	}
 
-	team := models.Team{
+	newTeam := models.Team{
 		Name: addedTeam.Name,
 	}
 
-	if err := db.database.Create(&team).Error; err != nil {
+	team, err := t.teamService.AddTeam(newTeam)
+
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -32,16 +51,17 @@ func (db *DBController) AddTeam(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": team})
 }
 
-func (db *DBController) DeleteTeam(c *gin.Context) {
+func (t teamController) DeleteTeam(c *gin.Context) {
 	id := c.Param("id")
-	var team models.Team
 
-	if err := db.database.First(&team, "id = ?", id).Error; err != nil {
+	_, err := t.teamService.GetTeam(id)
+
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	if err := db.database.Delete(&team, id).Error; err != nil {
+	if err := t.teamService.DeleteTeam(id); err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -49,11 +69,12 @@ func (db *DBController) DeleteTeam(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": "successfully Delete Team"})
 }
 
-func (db *DBController) GetTeam(c *gin.Context) {
-	var team models.Team
+func (t teamController) GetTeam(c *gin.Context) {
 	id := c.Param("id")
 
-	if err := db.database.Find(&team, "id = ?", id).Error; err != nil {
+	team, err := t.teamService.GetTeam(id)
+
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}

@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"net/http"
-	"os"
 	"sgcu65/models"
 	"sgcu65/services"
 
@@ -20,22 +19,37 @@ type AddUserDTO struct {
 	Username  string `json:"username"`
 }
 
-func (db *DBController) AddUser(c *gin.Context) {
+type userController struct {
+	userService services.UserService
+}
+
+type UserController interface {
+	AddUser(c *gin.Context)
+	DeleteUser(c *gin.Context)
+	GetUser(c *gin.Context)
+}
+
+func NewUserController(s services.UserService) UserController {
+	return userController{
+		userService: s,
+	}
+}
+
+func (u userController) AddUser(c *gin.Context) {
 	var addedUser AddUserDTO
 	if err := c.ShouldBindJSON(&addedUser); err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
 
-	bcryptSecret := os.Getenv("bcryptSecret")
-	password, err := services.HashPassword(bcryptSecret)
+	password, err := services.HashPassword(addedUser.Password)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	user := &models.User{
+	addUser := models.User{
 		Email:     addedUser.Email,
 		Firstname: addedUser.Firstname,
 		Surname:   addedUser.Surname,
@@ -46,7 +60,9 @@ func (db *DBController) AddUser(c *gin.Context) {
 		Username:  addedUser.Username,
 	}
 
-	if err := db.database.Create(&user).Error; err != nil {
+	user, err := u.userService.AddUser(addUser)
+
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -55,16 +71,17 @@ func (db *DBController) AddUser(c *gin.Context) {
 
 }
 
-func (db *DBController) DeleteUser(c *gin.Context) {
+func (u userController) DeleteUser(c *gin.Context) {
 	id := c.Param("id")
-	var user models.User
 
-	if err := db.database.First(&user, "id = ?", id).Error; err != nil {
+	_, err := u.userService.GetUser(id)
+
+	if err != nil {
 		c.JSON(http.StatusNotFound, err.Error())
 		return
 	}
 
-	if err := db.database.Delete(&user).Error; err != nil {
+	if err := u.userService.DeleteUser(id); err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -72,11 +89,12 @@ func (db *DBController) DeleteUser(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": "successfully delete user"})
 }
 
-func (db *DBController) GetUser(c *gin.Context) {
+func (u userController) GetUser(c *gin.Context) {
 	id := c.Param("id")
-	var user models.User
 
-	if err := db.database.First(&user, "id = ?", id).Error; err != nil {
+	user, err := u.userService.GetUser(id)
+
+	if err != nil {
 		c.JSON(http.StatusNotFound, err.Error())
 		return
 	}
